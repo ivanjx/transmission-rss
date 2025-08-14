@@ -6,20 +6,19 @@
 # docker tag nning2/transmission-rss:v1.2.3 nning2/transmission-rss:latest
 # docker push nning2/transmission-rss:v1.2.3
 
-FROM alpine:3 as builder
-RUN apk add gcc libc-dev make ruby-dev
+FROM alpine:3.14 AS builder
+RUN apk add gcc libc-dev make ruby-dev linux-headers
 COPY . /tmp
 WORKDIR /tmp
 RUN gem build transmission-rss.gemspec
 RUN gem install -N --build-root /build transmission-rss-*.gem
 
-FROM alpine:3
+FROM alpine:3.14
 ARG UID=1000
 ARG GID=1000
-RUN \
-  addgroup -g $GID ruby && \
-  adduser -u $UID -G ruby -D ruby && \
-  apk add --no-cache ruby ruby-etc ruby-json
+RUN addgroup -g $GID ruby
+RUN adduser -u $UID -G ruby -D ruby
+RUN apk add --no-cache ruby ruby-etc ruby-json
 USER ruby
 COPY --from=builder /build /
 CMD ["transmission-rss"]
