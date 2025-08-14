@@ -118,7 +118,6 @@ module TransmissionRSS
       if feed.use_hash
         torrent_hash = extract_torrent_hash(item)
         if torrent_hash
-          @log.debug("found torrent hash: #{torrent_hash}")
           link = create_magnet_link(torrent_hash, item.title)
         end
       end
