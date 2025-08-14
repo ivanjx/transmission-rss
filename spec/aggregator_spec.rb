@@ -295,4 +295,47 @@ describe Aggregator do
       end
     }
   end
+
+  describe '#extract_torrent_hash' do
+    it 'extracts hash from description content' do
+      # Mock an RSS item with hash in description
+      mock_item = double('RSS Item')
+      allow(mock_item).to receive(:title).and_return('Test Torrent')
+      allow(mock_item).to receive(:description).and_return('Hash: AD9D77D8C9ACA5432CAC4782E0419AEC634E97BE')
+      allow(mock_item).to receive(:instance_variables).and_return([])
+      allow(mock_item).to receive(:respond_to?).and_return(false)
+      
+      hash = subject.send(:extract_torrent_hash, mock_item)
+      expect(hash).to eq('ad9d77d8c9aca5432cac4782e0419aec634e97be')
+    end
+
+    it 'returns nil when no hash found' do
+      mock_item = double('RSS Item')
+      allow(mock_item).to receive(:title).and_return('Test Torrent')
+      allow(mock_item).to receive(:description).and_return('No hash here')
+      allow(mock_item).to receive(:instance_variables).and_return([])
+      allow(mock_item).to receive(:respond_to?).and_return(false)
+      
+      hash = subject.send(:extract_torrent_hash, mock_item)
+      expect(hash).to be_nil
+    end
+  end
+
+  describe '#create_magnet_link' do
+    it 'creates proper magnet link with hash and title' do
+      hash = 'ad9d77d8c9aca5432cac4782e0419aec634e97be'
+      title = 'Test Torrent [1080p]'
+      
+      magnet = subject.send(:create_magnet_link, hash, title)
+      expect(magnet).to start_with('magnet:?xt=urn:btih:ad9d77d8c9aca5432cac4782e0419aec634e97be')
+      expect(magnet).to include('&dn=Test+Torrent+%5B1080p%5D')
+    end
+
+    it 'creates magnet link without title if not provided' do
+      hash = 'ad9d77d8c9aca5432cac4782e0419aec634e97be'
+      
+      magnet = subject.send(:create_magnet_link, hash, nil)
+      expect(magnet).to eq('magnet:?xt=urn:btih:ad9d77d8c9aca5432cac4782e0419aec634e97be')
+    end
+  end
 end

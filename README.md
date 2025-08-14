@@ -123,6 +123,33 @@ feeds:
     seen_by_guid: true
 ```
 
+### Torrent Hash Support
+
+For RSS feeds that include torrent hashes (like Nyaa.si), transmission-rss can
+extract the hash and use magnet links instead of downloading .torrent files.
+This is more efficient and works better with some trackers. Default is false:
+
+```yaml
+feeds:
+  - url: https://nyaa.si/?page=rss
+    use_hash: true
+    regexp: "Your Show Filter"
+```
+
+This feature looks for torrent hashes in:
+- RSS item descriptions (common format: 40-character hexadecimal strings)
+- Namespaced elements like `nyaa:infoHash`
+- Content and extension fields
+
+When a hash is found, transmission-rss creates a magnet link in the format:
+`magnet:?xt=urn:btih:HASH&dn=TITLE`
+
+### All available options
+feeds:
+  - url: http://example.com/feed1
+    seen_by_guid: true
+```
+
 ### All available options
 
 The following configuration file example contains every existing option
@@ -161,6 +188,9 @@ feeds:
   - url: http://example.com/feed9
     validate_cert: false
     seen_by_guid: true
+  - url: https://nyaa.si/?page=rss
+    use_hash: true
+    regexp: "Your Filter"
 
 update_interval: 600
 

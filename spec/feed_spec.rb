@@ -85,4 +85,12 @@ describe Feed do
     expect(feed.download_path('foo')).to eq('/tmp/foo')
     expect(feed.download_path('bar')).to eq(nil)
   end
+
+  it 'should parse use_hash option' do
+    feed = Feed.new({'url' => @url, 'use_hash' => true})
+    expect(feed.use_hash).to eq(true)
+    
+    feed_default = Feed.new({'url' => @url})
+    expect(feed_default.use_hash).to eq(false)
+  end
 end
