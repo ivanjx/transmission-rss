@@ -35,7 +35,7 @@ feeds:
     validate_cert: false
     seen_by_guid: true
   - url: https://nyaa.si/?page=rss
-    field_name: nyaa_infoHash # Use the nyaa:infoHash field instead of the default link field
+    use_hash: true # Extract torrent hash from RSS feed and use magnet links instead of .torrent files
     regexp: "Your Filter Here"
 
 # Feed probing interval in seconds. Default is 600.
