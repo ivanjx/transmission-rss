@@ -105,19 +105,12 @@ module TransmissionRSS
     end
 
     def process_link(feed, item)
-      # Determine what field to use for the link
       if feed.field_name && feed.field_name != 'link'
         # Try to get the specified field from the item
         begin
           link = item.send(feed.field_name.to_sym) if item.respond_to?(feed.field_name.to_sym)
         rescue
-          @log.debug("Field '#{feed.field_name}' not found in item: #{item.title || 'untitled'}")
           link = nil
-        end
-        
-        # Fall back to regular link if specified field not found
-        if link.nil?
-          link = item.enclosure.url rescue item.link
         end
       else
         # Default behavior: use link
