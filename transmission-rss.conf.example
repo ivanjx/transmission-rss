@@ -35,8 +35,11 @@ feeds:
     validate_cert: false
     seen_by_guid: true
   - url: https://nyaa.si/?page=rss
-    use_hash: true # Extract torrent hash from RSS feed and use magnet links instead of .torrent files
+    link_field: "Custom link field (eg. nyaa:infoHash)"
     regexp: "Your Filter Here"
+
+# Path to the file where seen torrents are tracked.
+seen_file: .seen
 
 # Feed probing interval in seconds. Default is 600.
 
@@ -59,34 +62,7 @@ feeds:
 #  username: transmission
 #  password: transmission
 
-# Where to log. Default target is stderr, level debug. Target can be IO symbol
-# (e.g. ":stderr", ":stdout") or file path (e.g.
-# "/var/log/transmission-rss.log"). Level can be "error", "warn", "info",
-# "debug".
-
-#log:
-#  target: :stderr
-#  level: debug
-
-# Drop privileges. If omitted, privileges are not dropped.
-
-#privileges:
-#  user: nobody
-#  group: nobody
-
 # Other Transmission client options
 
 #client:
 #  timeout: 5
-
-# Fork?
-
-#fork: false
-
-# Single run mode?
-
-# single: false
-
-# Save PID.
-
-#pid_file: false

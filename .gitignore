@@ -1,9 +1,10 @@
-/coverage
-/log
-/*.gem
-/Gemfile.lock
 
-/transmission-rss.conf
-/.seen
+# Python ignores
+.venv/
+__pycache__/
+*.pyc
+log/
 
-/pkg
+# Config and runtime files
+transmission-rss.conf
+.seen
