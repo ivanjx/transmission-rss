@@ -105,22 +105,29 @@ module TransmissionRSS
     end
 
     def process_link(feed, item)
-      link = item.enclosure.url rescue item.link
+      # Determine what field to use for the link
+      if feed.field_name && feed.field_name != 'link'
+        # Try to get the specified field from the item
+        begin
+          link = item.send(feed.field_name.to_sym) if item.respond_to?(feed.field_name.to_sym)
+        rescue
+          link = nil
+        end
+        
+        # Fall back to regular link if specified field not found
+        if link.nil?
+          link = item.enclosure.url rescue item.link
+        end
+      else
+        # Default behavior: use link
+        link = item.enclosure.url rescue item.link
+      end
 
       # Item contains no link.
       return if link.nil?
 
       # Link is not a String directly.
       link = link.href if link.class != String
-
-      # Try to extract torrent hash from RSS item and create magnet link if available
-      torrent_hash = nil
-      if feed.use_hash
-        torrent_hash = extract_torrent_hash(item)
-        if torrent_hash
-          link = create_magnet_link(torrent_hash, item.title)
-        end
-      end
 
       # Determine whether to use guid or link as seen hash
       seen_value = feed.seen_by_guid ? (item.guid.content rescue item.guid || link).to_s : link
@@ -153,119 +160,6 @@ module TransmissionRSS
       end
 
       return link
-    end
-
-    # Extract torrent hash from RSS item
-    # Supports various RSS feed formats that include torrent hashes
-    def extract_torrent_hash(item)
-      # Try to access namespaced elements for torrent hash
-      # Common patterns: nyaa:infoHash, torrent:infoHash, etc.
-      
-      # First, try direct method calls for common namespaced elements
-      hash_candidates = []
-      
-      # Try various method names that might contain the hash
-      potential_methods = [
-        'infoHash', 'info_hash', 'hash', 'torrent_hash',
-        'nyaa_infoHash', 'nyaa_info_hash'
-      ]
-      
-      potential_methods.each do |method_name|
-        ['', 'nyaa_', 'torrent_'].each do |prefix|
-          full_method = (prefix + method_name).to_sym
-          begin
-            if item.respond_to?(full_method)
-              value = item.send(full_method)
-              hash_candidates << extract_hash_from_value(value)
-            end
-          rescue
-            # Ignore method call errors
-          end
-        end
-      end
-
-      # Try to access through item's instance variables
-      item.instance_variables.each do |var|
-        begin
-          value = item.instance_variable_get(var)
-          hash_candidates << extract_hash_from_value(value)
-        rescue
-          # Ignore access errors
-        end
-      end
-
-      # Try to extract from item content/description using regex
-      content_sources = []
-      begin
-        content_sources << item.description.content if item.description.respond_to?(:content)
-      rescue; end
-      
-      begin
-        content_sources << item.description.to_s if item.description
-      rescue; end
-      
-      begin
-        content_sources << item.content.content if item.content.respond_to?(:content)
-      rescue; end
-      
-      begin
-        content_sources << item.content.to_s if item.content
-      rescue; end
-
-      content_sources.each do |content|
-        next unless content.is_a?(String)
-        hash_candidates << extract_hash_from_string(content)
-      end
-
-      # Try accessing through the raw XML if available
-      begin
-        if item.respond_to?(:source) && item.source
-          hash_candidates << extract_hash_from_string(item.source.to_s)
-        end
-      rescue; end
-
-      # Return the first valid hash found
-      hash_candidates.compact.first
-    end
-
-    # Extract hash from a value (string, object, etc.)
-    def extract_hash_from_value(value)
-      return nil unless value
-      
-      if value.is_a?(String)
-        return extract_hash_from_string(value)
-      elsif value.respond_to?(:content)
-        return extract_hash_from_string(value.content.to_s)
-      elsif value.respond_to?(:to_s)
-        return extract_hash_from_string(value.to_s)
-      end
-      
-      nil
-    end
-
-    # Extract SHA-1 hash from string content
-    def extract_hash_from_string(content)
-      return nil unless content.is_a?(String)
-      
-      # Look for SHA-1 hash patterns (40 hex characters)
-      hash_match = content.match(/\b([a-fA-F0-9]{40})\b/i)
-      if hash_match
-        return hash_match[1].downcase
-      end
-      
-      nil
-    end
-
-    # Create a magnet link from torrent hash and title
-    def create_magnet_link(hash, title)
-      # Encode title for URL
-      encoded_title = URI.encode_www_form_component(title || "")
-      
-      # Create basic magnet link with hash and display name
-      magnet_link = "magnet:?xt=urn:btih:#{hash}"
-      magnet_link += "&dn=#{encoded_title}" unless encoded_title.empty?
-      
-      magnet_link
     end
   end
 end
