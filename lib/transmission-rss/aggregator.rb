@@ -111,7 +111,6 @@ module TransmissionRSS
         begin
           link = item.send(feed.field_name.to_sym) if item.respond_to?(feed.field_name.to_sym)
         rescue
-          @log.debug("Field '#{feed.field_name}' not found in item: #{item.title || 'untitled'}")
           link = nil
         end
         
