@@ -3,5 +3,6 @@ WORKDIR /app
 COPY src/ src/
 COPY transmission-rss.conf.example ./transmission-rss.conf
 COPY requirements.txt ./
+RUN apt-get update && apt-get install -y iputils-ping
 RUN pip install --no-cache-dir -r requirements.txt
 CMD ["python", "src/transmission_rss.py", "transmission-rss.conf"]
