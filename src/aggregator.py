@@ -82,8 +82,9 @@ class Aggregator:
                     if m['matcher'] and m['matcher'].search(title):
                         if m['exclude'] and m['exclude'].search(title):
                             continue
-                        self.client.add_torrent(torrent_url, download_dir=m['download_path'])
-                        self.logger.info(f'Added torrent: {torrent_url} to {m['download_path']}')
+                        download_path = m['download_path']
+                        self.client.add_torrent(torrent_url, download_dir=download_path)
+                        self.logger.info(f'Added torrent: {torrent_url} to {download_path}')
                         self.seen.add(unique_id)
                         self._save_seen()
                         break
