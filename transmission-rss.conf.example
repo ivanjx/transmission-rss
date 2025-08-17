@@ -35,7 +35,7 @@ feeds:
     validate_cert: false
     seen_by_guid: true
   - url: https://nyaa.si/?page=rss
-    link_field: "Custom link field (eg. nyaa:infoHash)"
+    link_field: "Custom link field (eg. nyaa:infoHash would be nyaa_infohash)"
     regexp: "Your Filter Here"
 
 # Path to the file where seen torrents are tracked.
