@@ -21,14 +21,14 @@ class Aggregator:
             return set()
 
     def _save_seen(self):
-        # Limit to the most recent 100 items
-        seen_list = list(self.seen)
+        # Filter out None values and limit to the most recent 100 items
+        seen_list = [item for item in self.seen if item is not None]
         if len(seen_list) > 100:
             # Keep only the last 100 items added
             seen_list = seen_list[-100:]
             self.seen = set(seen_list)
         with open(self.seen_file, 'w', encoding='utf-8') as f:
-            for item in sorted(self.seen):
+            for item in seen_list:
                 f.write(item + '\n')
 
     def _init_client(self):
@@ -74,9 +74,12 @@ class Aggregator:
             for entry in parsed.entries:
                 title = entry.get('title', '')
                 torrent_url = entry.get(link_field)
+                if not torrent_url:
+                    self.logger.warning(f'No torrent URL found in entry: {entry}')
+                    continue
                 # Determine unique ID for seen tracking
                 unique_id = entry.get('guid') if seen_by_guid else torrent_url
-                if unique_id in self.seen:
+                if not unique_id or unique_id in self.seen:
                     continue
                 for m in matchers:
                     if m['matcher'] and m['matcher'].search(title):
@@ -85,7 +88,8 @@ class Aggregator:
                         download_path = m['download_path']
                         self.client.add_torrent(torrent_url, download_dir=download_path)
                         self.logger.info(f'Added torrent: {torrent_url} to {download_path}')
-                        self.seen.add(unique_id)
+                        if unique_id:
+                            self.seen.add(unique_id)
                         self._save_seen()
                         break
         else:
@@ -109,8 +113,11 @@ class Aggregator:
             for entry in parsed.entries:
                 title = entry.get('title', '')
                 torrent_url = entry.get(link_field)
+                if not torrent_url:
+                    self.logger.warning(f'No torrent URL found in entry: {entry}')
+                    continue
                 unique_id = entry.get('guid') if seen_by_guid else torrent_url
-                if unique_id in self.seen:
+                if not unique_id or unique_id in self.seen:
                     continue
                 match = True
                 if regexps:
@@ -123,5 +130,6 @@ class Aggregator:
                         self.logger.info(f'Added torrent: {torrent_url} to {download_path}')
                     else:
                         self.logger.info(f'Added torrent: {torrent_url}')
-                    self.seen.add(unique_id)
+                    if unique_id:
+                        self.seen.add(unique_id)
                     self._save_seen()
