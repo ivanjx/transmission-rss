@@ -21,6 +21,12 @@ class Aggregator:
             return set()
 
     def _save_seen(self):
+        # Limit to the most recent 100 items
+        seen_list = list(self.seen)
+        if len(seen_list) > 100:
+            # Keep only the last 100 items added
+            seen_list = seen_list[-100:]
+            self.seen = set(seen_list)
         with open(self.seen_file, 'w', encoding='utf-8') as f:
             for item in sorted(self.seen):
                 f.write(item + '\n')
