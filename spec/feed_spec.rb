@@ -86,11 +86,14 @@ describe Feed do
     expect(feed.download_path('bar')).to eq(nil)
   end
 
-  it 'should parse use_hash option' do
-    feed = Feed.new({'url' => @url, 'use_hash' => true})
-    expect(feed.use_hash).to eq(true)
+  it 'should parse field_name option' do
+    feed = Feed.new({'url' => @url, 'field_name' => 'infoHash'})
+    expect(feed.field_name).to eq('infoHash')
     
     feed_default = Feed.new({'url' => @url})
-    expect(feed_default.use_hash).to eq(false)
+    expect(feed_default.field_name).to be_nil
+    
+    feed_custom = Feed.new({'url' => @url, 'field_name' => 'customField'})
+    expect(feed_custom.field_name).to eq('customField')
   end
 end

@@ -296,46 +296,96 @@ describe Aggregator do
     }
   end
 
-  describe '#extract_torrent_hash' do
-    it 'extracts hash from description content' do
-      # Mock an RSS item with hash in description
-      mock_item = double('RSS Item')
-      allow(mock_item).to receive(:title).and_return('Test Torrent')
-      allow(mock_item).to receive(:description).and_return('Hash: AD9D77D8C9ACA5432CAC4782E0419AEC634E97BE')
-      allow(mock_item).to receive(:instance_variables).and_return([])
-      allow(mock_item).to receive(:respond_to?).and_return(false)
-      
-      hash = subject.send(:extract_torrent_hash, mock_item)
-      expect(hash).to eq('ad9d77d8c9aca5432cac4782e0419aec634e97be')
+  describe '#process_link with field_name' do
+    before(:each) do    
+      VCR.use_cassette('feed_fetch', MATCH_REQUESTS_ON) do  
+        @item = subject.send(:parse, subject.send(:fetch, FEEDS.first)).first
+        subject.seen.clear!
+      end
     end
 
-    it 'returns nil when no hash found' do
-      mock_item = double('RSS Item')
-      allow(mock_item).to receive(:title).and_return('Test Torrent')
-      allow(mock_item).to receive(:description).and_return('No hash here')
-      allow(mock_item).to receive(:instance_variables).and_return([])
-      allow(mock_item).to receive(:respond_to?).and_return(false)
+    it 'uses custom field when field_name is set to custom field' do
+      feed = Feed.new({
+        'url' => FEEDS.first.url,
+        'field_name' => 'customField'
+      })
       
-      hash = subject.send(:extract_torrent_hash, mock_item)
-      expect(hash).to be_nil
-    end
-  end
-
-  describe '#create_magnet_link' do
-    it 'creates proper magnet link with hash and title' do
-      hash = 'ad9d77d8c9aca5432cac4782e0419aec634e97be'
-      title = 'Test Torrent [1080p]'
+      # Mock the item to have a custom field
+      allow(@item).to receive(:respond_to?).with(:customField).and_return(true)
+      allow(@item).to receive(:customField).and_return('http://custom.url/torrent.torrent')
       
-      magnet = subject.send(:create_magnet_link, hash, title)
-      expect(magnet).to start_with('magnet:?xt=urn:btih:ad9d77d8c9aca5432cac4782e0419aec634e97be')
-      expect(magnet).to include('&dn=Test+Torrent+%5B1080p%5D')
+      content = subject.send(:process_link, feed, @item)
+      
+      expect(content).to eq('http://custom.url/torrent.torrent')
+      
+      expect(subject.seen.size).to eq(1)
     end
 
-    it 'creates magnet link without title if not provided' do
-      hash = 'ad9d77d8c9aca5432cac4782e0419aec634e97be'
+    it 'falls back to regular link when custom field is not found' do
+      feed = Feed.new({
+        'url' => FEEDS.first.url,
+        'field_name' => 'nonexistentField'
+      })
       
-      magnet = subject.send(:create_magnet_link, hash, nil)
-      expect(magnet).to eq('magnet:?xt=urn:btih:ad9d77d8c9aca5432cac4782e0419aec634e97be')
+      # Mock the item to not have the custom field
+      allow(@item).to receive(:respond_to?).with(:nonexistentField).and_return(false)
+      
+      content = subject.send(:process_link, feed, @item)
+      
+      url = URI.parse(content)
+      expect(url.scheme).to eq('https')
+      expect(url.host).to eq('www.archlinux.org')
+      
+      expect(subject.seen.size).to eq(1)
+    end
+
+    it 'uses custom field infoHash when field_name is set to infoHash' do
+      feed = Feed.new({
+        'url' => FEEDS.first.url,
+        'field_name' => 'infoHash'
+      })
+      
+      # Mock the item to have an infoHash field
+      allow(@item).to receive(:respond_to?).with(:infoHash).and_return(true)
+      allow(@item).to receive(:infoHash).and_return('magnet:?xt=urn:btih:ad9d77d8c9aca5432cac4782e0419aec634e97be')
+      
+      content = subject.send(:process_link, feed, @item)
+      
+      expect(content).to eq('magnet:?xt=urn:btih:ad9d77d8c9aca5432cac4782e0419aec634e97be')
+      
+      expect(subject.seen.size).to eq(1)
+    end
+
+    it 'falls back to regular link when infoHash field is not found' do
+      feed = Feed.new({
+        'url' => FEEDS.first.url,
+        'field_name' => 'infoHash'
+      })
+      
+      # Mock the item to not have the infoHash field
+      allow(@item).to receive(:respond_to?).with(:infoHash).and_return(false)
+      
+      content = subject.send(:process_link, feed, @item)
+      
+      url = URI.parse(content)
+      expect(url.scheme).to eq('https')
+      expect(url.host).to eq('www.archlinux.org')
+      
+      expect(subject.seen.size).to eq(1)
+    end
+
+    it 'uses regular link when field_name is not specified' do
+      feed = Feed.new({
+        'url' => FEEDS.first.url
+      })
+      
+      content = subject.send(:process_link, feed, @item)
+      
+      url = URI.parse(content)
+      expect(url.scheme).to eq('https')
+      expect(url.host).to eq('www.archlinux.org')
+      
+      expect(subject.seen.size).to eq(1)
     end
   end
 end
