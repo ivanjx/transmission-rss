@@ -3,7 +3,7 @@ name: cicd
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ python ]
 
 jobs:
   build:
@@ -28,6 +28,6 @@ jobs:
           file: Dockerfile
           platforms: linux/amd64
           push: true
-          tags: ghcr.io/ivanjx/transmission-rss:latest
+          tags: ghcr.io/ivanjx/transmission-rss:python
           cache-to: type=registry,ref=ghcr.io/ivanjx/transmission-rss:cache,mode=max
           cache-from: type=registry,ref=ghcr.io/ivanjx/transmission-rss:cache
