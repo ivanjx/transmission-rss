@@ -84,6 +84,7 @@ class Aggregator:
         else:
             # Fallback to legacy regexp/exclude logic
             exclude = feed.get('exclude')
+            download_path = feed.get('download_path')
             if isinstance(regexp, list):
                 regexps = [re.compile(r, re.IGNORECASE) for r in regexp]
             elif regexp:
@@ -110,7 +111,10 @@ class Aggregator:
                 if excludes and any(e.search(title) for e in excludes):
                     match = False
                 if torrent_url and match:
-                    self.client.add_torrent(torrent_url)
-                    self.logger.info(f'Added torrent: {torrent_url}')
+                    self.client.add_torrent(torrent_url, download_dir=download_path)
+                    if download_path:
+                        self.logger.info(f'Added torrent: {torrent_url} to {download_path}')
+                    else:
+                        self.logger.info(f'Added torrent: {torrent_url}')
                     self.seen.add(unique_id)
                     self._save_seen()
