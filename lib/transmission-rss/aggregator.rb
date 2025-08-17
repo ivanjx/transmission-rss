@@ -124,10 +124,7 @@ module TransmissionRSS
       end
 
       # Item contains no link.
-      if link.nil?
-        @log.debug('no link found for item: ' + (item.title || 'untitled'))
-        return
-      end
+      return if link.nil?
 
       # Link is not a String directly.
       link = link.href if link.class != String
