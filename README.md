@@ -123,33 +123,26 @@ feeds:
     seen_by_guid: true
 ```
 
-### Custom Field Support
+### Torrent Hash Support
 
-For RSS feeds that include custom fields, transmission-rss can extract values 
-from specified fields instead of using the default 'link' field. This allows 
-you to use alternative download links or metadata provided by the RSS feed.
+For RSS feeds that include torrent hashes (like Nyaa.si), transmission-rss can
+extract the hash and use magnet links instead of downloading .torrent files.
+This is more efficient and works better with some trackers. Default is false:
 
 ```yaml
 feeds:
   - url: https://nyaa.si/?page=rss
-    field_name: nyaa_infoHash  # Use the nyaa:infoHash field for magnet links
+    use_hash: true
     regexp: "Your Show Filter"
-  - url: https://example.com/rss
-    field_name: customField    # Use any custom field from the RSS
 ```
 
-#### Common Field Names
+This feature looks for torrent hashes in:
+- RSS item descriptions (common format: 40-character hexadecimal strings)
+- Namespaced elements like `nyaa:infoHash`
+- Content and extension fields
 
-For RSS feeds with namespaced elements (like `<nyaa:infoHash>`), use underscore notation:
-- `nyaa_infoHash` for `<nyaa:infoHash>` fields (Nyaa torrents)
-- `torrent_hash` for `<torrent:hash>` fields
-- Or try the field name without namespace: `infoHash`
-
-When `field_name` is specified, transmission-rss will:
-- Try to extract the value from the specified field on the RSS item
-- Fall back to the regular 'link' field if the specified field is not found
-
-If `field_name` is not specified, the default 'link' field will be used as before.
+When a hash is found, transmission-rss creates a magnet link in the format:
+`magnet:?xt=urn:btih:HASH&dn=TITLE`
 
 ### All available options
 feeds:
@@ -196,7 +189,7 @@ feeds:
     validate_cert: false
     seen_by_guid: true
   - url: https://nyaa.si/?page=rss
-    field_name: nyaa_infoHash
+    use_hash: true
     regexp: "Your Filter"
 
 update_interval: 600
