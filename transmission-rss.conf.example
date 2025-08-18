@@ -32,7 +32,6 @@ feeds:
       - matcher: match2
         download_path: /home/user/match2
   - url: http://example.com/feed8
-    validate_cert: false
     seen_by_guid: true
   - url: https://nyaa.si/?page=rss
     link_field: "Custom link field (eg. nyaa:infoHash would be nyaa_infohash)"

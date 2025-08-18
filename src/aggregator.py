@@ -1,6 +1,7 @@
 import time
 import logging
 import feedparser
+import re
 from transmission_client import TransmissionClient
 from config_loader import ConfigLoader
 
@@ -12,6 +13,7 @@ class Aggregator:
         self.update_interval = self.config.get_option('update_interval', 600)
         self.seen_file = self.config.get_option('seen_file', '.seen')
         self.seen = self._load_seen()
+        self.global_add_paused = self.config.get_option('add_paused', False)
 
     def _load_seen(self):
         try:
@@ -52,14 +54,15 @@ class Aggregator:
             time.sleep(self.update_interval)
 
     def process_feed(self, feed):
-        import re
         url = feed['url']
         self.logger.info(f'Fetching feed: {url}')
         parsed = feedparser.parse(url)
         link_field = feed.get('link_field', 'link')
         seen_by_guid = feed.get('seen_by_guid', False)
-
+        add_paused = feed.get('add_paused', self.global_add_paused)
+        delay_time = feed.get('delay_time', None)
         regexp = feed.get('regexp')
+
         # If regexp is a list of matcher objects, handle advanced matching
         if isinstance(regexp, list) and regexp and isinstance(regexp[0], dict):
             matchers = []
@@ -81,16 +84,18 @@ class Aggregator:
                 unique_id = entry.get('guid') if seen_by_guid else torrent_url
                 if not unique_id or unique_id in self.seen:
                     continue
-                for m in matchers:
-                    if m['matcher'] and m['matcher'].search(title):
-                        if m['exclude'] and m['exclude'].search(title):
+                for matcher in matchers:
+                    download_path = matcher['download_path']
+                    if matcher['matcher'] and matcher['matcher'].search(title):
+                        if matcher['exclude'] and matcher['exclude'].search(title):
                             continue
-                        download_path = m['download_path']
-                        self.client.add_torrent(torrent_url, download_dir=download_path)
-                        self.logger.info(f'Added torrent: {torrent_url} to {download_path}')
+                        self.logger.info(f'Adding torrent ({torrent_url}) for ({title})')
+                        self.client.add_torrent(torrent_url, paused=add_paused, download_dir=download_path)
                         if unique_id:
                             self.seen.add(unique_id)
                         self._save_seen()
+                        if delay_time:
+                            time.sleep(float(delay_time))
                         break
         else:
             # Fallback to legacy regexp/exclude logic
@@ -125,11 +130,10 @@ class Aggregator:
                 if excludes and any(e.search(title) for e in excludes):
                     match = False
                 if torrent_url and match:
-                    self.client.add_torrent(torrent_url, download_dir=download_path)
-                    if download_path:
-                        self.logger.info(f'Added torrent: {torrent_url} to {download_path}')
-                    else:
-                        self.logger.info(f'Added torrent: {torrent_url}')
+                    self.logger.info(f'Adding torrent ({torrent_url}) for ({title})')
+                    self.client.add_torrent(torrent_url, paused=add_paused, download_dir=download_path)
                     if unique_id:
                         self.seen.add(unique_id)
                     self._save_seen()
+                    if delay_time:
+                        time.sleep(float(delay_time))
