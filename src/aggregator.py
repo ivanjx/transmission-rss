@@ -2,6 +2,7 @@ import time
 import logging
 import feedparser
 import re
+from urllib.parse import urlparse
 from transmission_client import TransmissionClient
 from config_loader import ConfigLoader
 
@@ -46,6 +47,28 @@ class Aggregator:
             timeout=client_opts.get('timeout', 5)
         )
 
+    def _add_torrent(self, torrent_url, title, unique_id, add_paused, download_path, delay_time):
+        self.logger.info(f'Adding torrent ({torrent_url}) for ({title})')
+        try:
+            result = self.client.add_torrent(torrent_url, paused=add_paused, download_dir=download_path)
+            # Check if the torrent was added successfully
+            if result and 'result' in result:
+                if result['result'] == 'success':
+                    self.logger.info(f'Successfully added torrent: {title}')
+                    if unique_id:
+                        self.seen.add(unique_id)
+                    self._save_seen()
+                    if delay_time:
+                        time.sleep(float(delay_time))
+                    return True
+                else:
+                    self.logger.error(f'Transmission returned error for {title}: {result.get("result", "unknown error")}')
+            else:
+                self.logger.error(f'Unexpected response format when adding torrent {title}: {result}')
+        except Exception as e:
+            self.logger.error(f'Unexpected error when adding torrent {title}: {e}')
+        return False
+
     def run(self):
         while True:
             for feed in self.config.get_feeds():
@@ -54,15 +77,18 @@ class Aggregator:
 
     def process_feed(self, feed):
         url = feed['url']
-        self.logger.info(f'Fetching feed: {url}')
-        parsed = feedparser.parse(url)
         link_field = feed.get('link_field', 'link')
         seen_by_guid = feed.get('seen_by_guid', False)
         add_paused = feed.get('add_paused', self.global_add_paused)
         delay_time = feed.get('delay_time', None)
         regexp = feed.get('regexp')
-        last_entry = None
-
+        self.logger.info(f'Fetching feed: {url}')
+        try:
+            parsed = feedparser.parse(url)
+        except Exception as e:
+            self.logger.error(f'Failed to fetch or parse RSS feed: {e}')
+            return
+        
         # If regexp is a list of matcher objects, handle advanced matching
         if isinstance(regexp, list) and regexp and isinstance(regexp[0], dict):
             matchers = []
@@ -80,7 +106,6 @@ class Aggregator:
                 if not torrent_url:
                     self.logger.warning(f'No torrent URL found in entry: {entry}')
                     continue
-                # Determine unique ID for seen tracking
                 unique_id = entry.get('guid') if seen_by_guid else torrent_url
                 if not unique_id or unique_id in self.seen:
                     continue
@@ -89,13 +114,7 @@ class Aggregator:
                     if matcher['matcher'] and matcher['matcher'].search(title):
                         if matcher['exclude'] and matcher['exclude'].search(title):
                             continue
-                        self.logger.info(f'Adding torrent ({torrent_url}) for ({title})')
-                        self.client.add_torrent(torrent_url, paused=add_paused, download_dir=download_path)
-                        if unique_id:
-                            self.seen.add(unique_id)
-                        self._save_seen()
-                        if delay_time:
-                            time.sleep(float(delay_time))
+                        self._add_torrent(torrent_url, title, unique_id, add_paused, download_path, delay_time)
                         break
                 last_entry = entry 
         else:
@@ -131,13 +150,7 @@ class Aggregator:
                 if excludes and any(e.search(title) for e in excludes):
                     match = False
                 if torrent_url and match:
-                    self.logger.info(f'Adding torrent ({torrent_url}) for ({title})')
-                    self.client.add_torrent(torrent_url, paused=add_paused, download_dir=download_path)
-                    if unique_id:
-                        self.seen.add(unique_id)
-                    self._save_seen()
-                    if delay_time:
-                        time.sleep(float(delay_time))
+                    self._add_torrent(torrent_url, title, unique_id, add_paused, download_path, delay_time)
                 last_entry = entry
         
         if last_entry:
