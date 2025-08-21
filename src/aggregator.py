@@ -48,7 +48,6 @@ class Aggregator:
 
     def run(self):
         while True:
-            self.logger.info('Checking feeds...')
             for feed in self.config.get_feeds():
                 self.process_feed(feed)
             time.sleep(self.update_interval)
@@ -62,6 +61,7 @@ class Aggregator:
         add_paused = feed.get('add_paused', self.global_add_paused)
         delay_time = feed.get('delay_time', None)
         regexp = feed.get('regexp')
+        last_entry = None
 
         # If regexp is a list of matcher objects, handle advanced matching
         if isinstance(regexp, list) and regexp and isinstance(regexp[0], dict):
@@ -97,6 +97,7 @@ class Aggregator:
                         if delay_time:
                             time.sleep(float(delay_time))
                         break
+                last_entry = entry 
         else:
             # Fallback to legacy regexp/exclude logic
             exclude = feed.get('exclude')
@@ -137,3 +138,7 @@ class Aggregator:
                     self._save_seen()
                     if delay_time:
                         time.sleep(float(delay_time))
+                last_entry = entry
+        
+        if last_entry:
+            self.logger.info(f'Last processed entry: {last_entry.get(link_field, "unknown")}')
