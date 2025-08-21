@@ -116,7 +116,6 @@ class Aggregator:
                             continue
                         self._add_torrent(torrent_url, title, unique_id, add_paused, download_path, delay_time)
                         break
-                last_entry = entry 
         else:
             # Fallback to legacy regexp/exclude logic
             exclude = feed.get('exclude')
@@ -151,7 +150,6 @@ class Aggregator:
                     match = False
                 if torrent_url and match:
                     self._add_torrent(torrent_url, title, unique_id, add_paused, download_path, delay_time)
-                last_entry = entry
         
-        if last_entry:
-            self.logger.info(f'Last processed entry: {last_entry.get(link_field, "unknown")}')
+        if len(parsed.entries) > 0:
+            self.logger.info(f'Last processed entry: {parsed.entries[0].get(link_field, "unknown")}')
