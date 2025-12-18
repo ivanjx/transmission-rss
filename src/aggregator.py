@@ -19,17 +19,17 @@ class Aggregator:
     def _load_seen(self):
         try:
             with open(self.seen_file, 'r', encoding='utf-8') as f:
-                return set(line.strip() for line in f if line.strip())
+                return [line.strip() for line in f if line.strip()]
         except FileNotFoundError:
-            return set()
+            return []
 
     def _save_seen(self):
         # Filter out None values and limit to the most recent 100 items
         seen_list = [item for item in self.seen if item is not None]
         if len(seen_list) > 100:
-            # Keep only the last 100 items added
+            # Keep only the last 100 items (most recent)
             seen_list = seen_list[-100:]
-            self.seen = set(seen_list)
+            self.seen = seen_list
         with open(self.seen_file, 'w', encoding='utf-8') as f:
             for item in seen_list:
                 f.write(item + '\n')
@@ -55,8 +55,8 @@ class Aggregator:
             if result and 'result' in result:
                 if result['result'] == 'success':
                     self.logger.info(f'Successfully added torrent: {title}')
-                    if unique_id:
-                        self.seen.add(unique_id)
+                    if unique_id and unique_id not in self.seen:
+                        self.seen.append(unique_id)
                     self._save_seen()
                     if delay_time:
                         time.sleep(float(delay_time))
@@ -88,7 +88,7 @@ class Aggregator:
         except Exception as e:
             self.logger.error(f'Failed to fetch or parse RSS feed: {e}')
             return
-        
+
         # If regexp is a list of matcher objects, handle advanced matching
         if isinstance(regexp, list) and regexp and isinstance(regexp[0], dict):
             matchers = []
@@ -150,6 +150,6 @@ class Aggregator:
                     match = False
                 if torrent_url and match:
                     self._add_torrent(torrent_url, title, unique_id, add_paused, download_path, delay_time)
-        
+
         if len(parsed.entries) > 0:
             self.logger.info(f'Last processed entry: {parsed.entries[0].get(link_field, "unknown")}')

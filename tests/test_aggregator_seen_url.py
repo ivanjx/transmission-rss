@@ -15,6 +15,7 @@ class TestAggregatorSeenURL(unittest.TestCase):
             {'title': 'Test 3', 'link': 'url3', 'guid': 'guid3'},
         ])
         mock_client_instance = MagicMock()
+        mock_client_instance.add_torrent.return_value = {'result': 'success'}
         mock_transmission_client.return_value = mock_client_instance
 
         # Use a temp seen file
@@ -31,6 +32,7 @@ class TestAggregatorSeenURL(unittest.TestCase):
         mock_config_loader.return_value = mock_config
 
         agg = Aggregator('dummy_path')
+        agg.logger = MagicMock()  # Mock logger to avoid logging issues
         agg.process_feed({'url': 'http://example.com/feed'})
 
         # Should call add_torrent for all entries

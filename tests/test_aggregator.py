@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock
 import feedparser
+import os
 from src.aggregator import Aggregator
 from src.transmission_client import TransmissionClient
 from src.config_loader import ConfigLoader
@@ -67,13 +68,19 @@ class TestAggregator(unittest.TestCase):
         mock_client_instance.add_torrent.return_value = {'result': 'success'}
         mock_transmission_client.return_value = mock_client_instance
 
+        # Use a temp seen file
+        seen_file = 'test_seen_file_agg.txt'
+        if os.path.exists(seen_file):
+            os.remove(seen_file)
+
         # Mock config loader to return feeds with link_field set to infoHash
         mock_config = MagicMock()
         mock_config.get_feeds.return_value = [{'url': 'https://nyaa.si/?page=rss', 'link_field': 'nyaa_infohash'}]
-        mock_config.get_option.side_effect = lambda k, d=None: d
+        mock_config.get_option.side_effect = lambda k, d=None: seen_file if k == 'seen_file' else d
         mock_config_loader.return_value = mock_config
 
         agg = Aggregator('dummy_path')
+        agg.logger = MagicMock()  # Mock logger to avoid logging issues
         agg.process_feed({'url': 'https://nyaa.si/?page=rss', 'link_field': 'nyaa_infohash'})
 
         # Should call add_torrent for each item using infoHash
@@ -81,6 +88,10 @@ class TestAggregator(unittest.TestCase):
         calls = [call[0][0] for call in mock_client_instance.add_torrent.call_args_list]
         self.assertIn('957448e40d163af61b57cf05fa25ec92bc55ea7c', calls)
         self.assertIn('5616f794088be7437993ce01139e3f5afc4fd32d', calls)
+
+        # Cleanup
+        if os.path.exists(seen_file):
+            os.remove(seen_file)
 
     @patch('feedparser.parse')
     @patch('src.aggregator.TransmissionClient')
@@ -95,13 +106,19 @@ class TestAggregator(unittest.TestCase):
         mock_client_instance.add_torrent.return_value = {'result': 'success'}
         mock_transmission_client.return_value = mock_client_instance
 
+        # Use a temp seen file
+        seen_file = 'test_seen_file_agg2.txt'
+        if os.path.exists(seen_file):
+            os.remove(seen_file)
+
         # Mock config loader to return feeds
         mock_config = MagicMock()
         mock_config.get_feeds.return_value = [{'url': 'https://nyaa.si/?page=rss'}]
-        mock_config.get_option.side_effect = lambda k, d=None: d
+        mock_config.get_option.side_effect = lambda k, d=None: seen_file if k == 'seen_file' else d
         mock_config_loader.return_value = mock_config
 
         agg = Aggregator('dummy_path')
+        agg.logger = MagicMock()  # Mock logger to avoid logging issues
         agg.process_feed({'url': 'https://nyaa.si/?page=rss'})
 
         # Should call add_torrent for each item in the feed
@@ -109,6 +126,10 @@ class TestAggregator(unittest.TestCase):
         calls = [call[0][0] for call in mock_client_instance.add_torrent.call_args_list]
         self.assertIn('https://nyaa.si/download/2007666.torrent', calls)
         self.assertIn('https://nyaa.si/download/2007665.torrent', calls)
+
+        # Cleanup
+        if os.path.exists(seen_file):
+            os.remove(seen_file)
 
 if __name__ == '__main__':
     unittest.main()
