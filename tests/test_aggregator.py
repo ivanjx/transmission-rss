@@ -55,10 +55,17 @@ NYAA_RSS = '''<?xml version="1.0" encoding="UTF-8"?>
 </rss>'''
 
 class TestAggregator(unittest.TestCase):
+    @patch('src.aggregator.requests.get')
     @patch('feedparser.parse')
     @patch('src.aggregator.TransmissionClient')
     @patch('src.aggregator.ConfigLoader')
-    def test_link_field_option(self, mock_config_loader, mock_transmission_client, mock_feedparser):
+    def test_link_field_option(self, mock_config_loader, mock_transmission_client, mock_feedparser, mock_requests_get):
+        # Mock requests.get to return a successful response
+        mock_response = MagicMock()
+        mock_response.content = b'mock content'
+        mock_response.raise_for_status.return_value = None
+        mock_requests_get.return_value = mock_response
+
         # Prepare a mock for feedparser.parse with infoHash field
         mock_feedparser.return_value = MagicMock(entries=[
             {'nyaa_infohash': '957448e40d163af61b57cf05fa25ec92bc55ea7c'},
@@ -93,10 +100,17 @@ class TestAggregator(unittest.TestCase):
         if os.path.exists(seen_file):
             os.remove(seen_file)
 
+    @patch('src.aggregator.requests.get')
     @patch('feedparser.parse')
     @patch('src.aggregator.TransmissionClient')
     @patch('src.aggregator.ConfigLoader')
-    def test_nyaa_feed_and_transmission(self, mock_config_loader, mock_transmission_client, mock_feedparser):
+    def test_nyaa_feed_and_transmission(self, mock_config_loader, mock_transmission_client, mock_feedparser, mock_requests_get):
+        # Mock requests.get to return a successful response
+        mock_response = MagicMock()
+        mock_response.content = b'mock content'
+        mock_response.raise_for_status.return_value = None
+        mock_requests_get.return_value = mock_response
+
         # Prepare a mock for feedparser.parse with link field
         mock_feedparser.return_value = MagicMock(entries=[
             {'link': 'https://nyaa.si/download/2007666.torrent'},

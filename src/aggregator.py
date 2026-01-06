@@ -2,9 +2,13 @@ import time
 import logging
 import feedparser
 import re
-from urllib.parse import urlparse
-from transmission_client import TransmissionClient
-from config_loader import ConfigLoader
+import requests
+try:
+    from .transmission_client import TransmissionClient
+    from .config_loader import ConfigLoader
+except (ImportError, ValueError):
+    from transmission_client import TransmissionClient
+    from config_loader import ConfigLoader
 
 class Aggregator:
     def __init__(self, config_path):
@@ -84,9 +88,14 @@ class Aggregator:
         regexp = feed.get('regexp')
         self.logger.info(f'Fetching feed: {url}')
         try:
-            parsed = feedparser.parse(url)
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+            parsed = feedparser.parse(response.content)
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f'Failed to fetch RSS feed: {e}')
+            return
         except Exception as e:
-            self.logger.error(f'Failed to fetch or parse RSS feed: {e}')
+            self.logger.error(f'Failed to parse RSS feed: {e}')
             return
 
         # If regexp is a list of matcher objects, handle advanced matching

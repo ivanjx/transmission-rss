@@ -4,10 +4,17 @@ import os
 from src.aggregator import Aggregator
 
 class TestAggregatorSeen(unittest.TestCase):
+    @patch('src.aggregator.requests.get')
     @patch('feedparser.parse')
     @patch('src.aggregator.TransmissionClient')
     @patch('src.aggregator.ConfigLoader')
-    def test_seen_file_logic(self, mock_config_loader, mock_transmission_client, mock_feedparser):
+    def test_seen_file_logic(self, mock_config_loader, mock_transmission_client, mock_feedparser, mock_requests_get):
+        # Mock requests.get to return a successful response
+        mock_response = MagicMock()
+        mock_response.content = b'mock content'
+        mock_response.raise_for_status.return_value = None
+        mock_requests_get.return_value = mock_response
+
         # Prepare mock feedparser entries
         mock_feedparser.return_value = MagicMock(entries=[
             {'title': 'Test 1', 'link': 'url1', 'guid': 'guid1'},
@@ -52,10 +59,17 @@ class TestAggregatorSeen(unittest.TestCase):
         # Cleanup
         os.remove(seen_file)
 
+    @patch('src.aggregator.requests.get')
     @patch('feedparser.parse')
     @patch('src.aggregator.TransmissionClient')
     @patch('src.aggregator.ConfigLoader')
-    def test_seen_file_limit_100(self, mock_config_loader, mock_transmission_client, mock_feedparser):
+    def test_seen_file_limit_100(self, mock_config_loader, mock_transmission_client, mock_feedparser, mock_requests_get):
+        # Mock requests.get to return a successful response
+        mock_response = MagicMock()
+        mock_response.content = b'mock content'
+        mock_response.raise_for_status.return_value = None
+        mock_requests_get.return_value = mock_response
+
         # Prepare mock feedparser entries with 105 items
         entries = [{'title': f'Test {i}', 'link': f'url{i}', 'guid': f'guid{i}'} for i in range(105)]
         mock_feedparser.return_value = MagicMock(entries=entries)

@@ -1,12 +1,20 @@
 import unittest
 from unittest.mock import patch, MagicMock
+import os
 from src.aggregator import Aggregator
 
 class TestAggregatorMatcher(unittest.TestCase):
+    @patch('src.aggregator.requests.get')
     @patch('feedparser.parse')
     @patch('src.aggregator.TransmissionClient')
     @patch('src.aggregator.ConfigLoader')
-    def test_advanced_matcher(self, mock_config_loader, mock_transmission_client, mock_feedparser):
+    def test_advanced_matcher(self, mock_config_loader, mock_transmission_client, mock_feedparser, mock_requests_get):
+        # Mock requests.get to return a successful response
+        mock_response = MagicMock()
+        mock_response.content = b'mock content'
+        mock_response.raise_for_status.return_value = None
+        mock_requests_get.return_value = mock_response
+
         # Prepare mock feedparser entries
         mock_feedparser.return_value = MagicMock(entries=[
             {'title': '[ASW] Anne Shirley 1080p', 'link': 'url1'},
@@ -18,7 +26,13 @@ class TestAggregatorMatcher(unittest.TestCase):
             {'title': '[TOONSHUB] Nyaight of the Living Cat 1080p', 'link': 'url7'},
         ])
         mock_client_instance = MagicMock()
+        mock_client_instance.add_torrent.return_value = {'result': 'success'}
         mock_transmission_client.return_value = mock_client_instance
+
+        # Use a temp seen file
+        seen_file = 'test_seen_file_matcher.txt'
+        if os.path.exists(seen_file):
+            os.remove(seen_file)
 
         # Advanced matcher config
         matcher_config = [
@@ -32,7 +46,7 @@ class TestAggregatorMatcher(unittest.TestCase):
             'url': 'http://example.com/feed',
             'regexp': matcher_config
         }]
-        mock_config.get_option.side_effect = lambda k, d=None: d
+        mock_config.get_option.side_effect = lambda k, d=None: seen_file if k == 'seen_file' else d
         mock_config_loader.return_value = mock_config
 
         agg = Aggregator('dummy_path')
@@ -52,6 +66,10 @@ class TestAggregatorMatcher(unittest.TestCase):
         self.assertIn('/share/Movies/Witch Watch', paths)
         self.assertIn('/share/Movies/Sakamoto Days/Sakamoto Days S2', paths)
         self.assertIn('/share/Movies/Nyaight of the Living Cat', paths)
+
+        # Cleanup
+        if os.path.exists(seen_file):
+            os.remove(seen_file)
 
 if __name__ == '__main__':
     unittest.main()
