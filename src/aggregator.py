@@ -3,12 +3,16 @@ import logging
 import feedparser
 import re
 import requests
+import defusedxml
 try:
     from .transmission_client import TransmissionClient
     from .config_loader import ConfigLoader
 except (ImportError, ValueError):
     from transmission_client import TransmissionClient
     from config_loader import ConfigLoader
+
+# Configure feedparser to use defusedxml for safe XML parsing
+feedparser.PREFERRED_XML_PARSERS = ['defusedxml']
 
 class Aggregator:
     def __init__(self, config_path):
@@ -90,7 +94,41 @@ class Aggregator:
         try:
             response = requests.get(url, timeout=30)
             response.raise_for_status()
+
+            # Validate content type (warn but don't reject)
+            content_type = response.headers.get('content-type', '').lower()
+            valid_content_types = [
+                'application/rss+xml',
+                'application/xml',
+                'text/xml'
+            ]
+            is_expected_type = (
+                any(content_type.startswith(ct) for ct in valid_content_types) or
+                'xml' in content_type
+            )
+            if content_type and not is_expected_type:
+                self.logger.warning(f'Unexpected content type for {url}: {content_type}')
+
+            # Limit response size to prevent billion laughs attacks
+            max_size = 10 * 1024 * 1024  # 10MB limit
+            if len(response.content) > max_size:
+                self.logger.error(f'Feed content too large for {url}: {len(response.content)} bytes')
+                return
+
             parsed = feedparser.parse(response.content)
+
+            # Validate that we have a valid feed structure
+            if not hasattr(parsed, 'entries'):
+                self.logger.error(f'Invalid RSS feed structure from {url}')
+                return
+
+            # Only reject if parsing completely failed (bozo=True and no entries)
+            if parsed.bozo and len(parsed.entries) == 0:
+                self.logger.error(f'Malformed RSS feed from {url}')
+                if hasattr(parsed, 'bozo_exception'):
+                    self.logger.error(f'Parse error: {parsed.bozo_exception}')
+                return
+
         except requests.exceptions.RequestException as e:
             self.logger.error(f'Failed to fetch RSS feed: {e}')
             return
